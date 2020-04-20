@@ -1,0 +1,154 @@
+plugins {
+    id 'kotlin-multiplatform'
+    id 'kotlinx-serialization'
+}
+
+repositories {
+    google()
+    jcenter()
+    mavenCentral()
+}
+
+apply plugin: 'com.android.application'
+apply plugin: 'kotlin-android-extensions'
+apply plugin: "com.squareup.sqldelight"
+
+sqldelight {
+    ScheduleDb {
+        packageName = "data"
+    }
+}
+
+android {
+    compileSdkVersion 29
+
+    defaultConfig {
+        applicationId 'com.android.makers'
+        minSdkVersion 21
+        targetSdkVersion 29
+        versionCode 1
+        versionName '1.0.0'
+        testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+        }
+    }
+
+    packagingOptions {
+        // Ktor prevents the build otherwise
+        exclude 'META-INF/*.kotlin_module'
+    }
+
+    compileOptions {
+        targetCompatibility = "8"
+        sourceCompatibility = "8"
+    }
+
+    sourceSets {
+        main {
+            manifest.srcFile 'src/androidMain/AndroidManifest.xml'
+            java.srcDirs = ['src/androidMain/java']
+            res.srcDirs = ['src/androidMain/res']
+        }
+    }
+}
+
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.1.0'
+    implementation 'androidx.recyclerview:recyclerview:1.1.0'
+    implementation 'androidx.cardview:cardview:1.0.0'
+    implementation "androidx.swiperefreshlayout:swiperefreshlayout:1.0.0"
+
+    implementation 'com.google.android.material:material:1.1.0'
+
+    implementation "com.github.bumptech.glide:glide:4.11.0"
+
+    androidTestImplementation 'androidx.test.ext:junit:1.1.1'
+}
+
+kotlin {
+    android("android")
+
+    iosX64("ios") {
+        binaries {
+            framework()
+        }
+    }
+
+    sourceSets {
+        commonMain {
+            dependencies {
+                implementation "io.ktor:ktor-client-core:${ktor_version}"
+                implementation "io.ktor:ktor-client-serialization:${ktor_version}"
+
+                implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core-common:${coroutines_version}"
+            }
+        }
+
+        commonTest {
+            dependencies {
+                implementation kotlin('test-common')
+                implementation kotlin('test-annotations-common')
+            }
+        }
+
+        androidMain {
+            dependencies {
+                implementation "io.ktor:ktor-client-android:${ktor_version}"
+                implementation "io.ktor:ktor-client-serialization-jvm:${ktor_version}"
+                implementation "io.ktor:ktor-client-okhttp:${ktor_version}"
+                implementation "com.squareup.okhttp3:logging-interceptor:3.14.1"
+                
+                implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:${coroutines_version}"
+
+                implementation "com.squareup.sqldelight:android-driver:${sqldelight_version}"
+            }
+        }
+
+        androidTest {
+            dependencies {
+                implementation kotlin('test')
+                implementation kotlin('test-junit')
+            }
+        }
+
+        iosMain {
+            dependencies {
+                implementation "io.ktor:ktor-client-ios:${ktor_version}"
+                implementation "io.ktor:ktor-client-serialization-native:${ktor_version}"
+                
+                implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core-native:${coroutines_version}"
+
+                implementation "com.squareup.sqldelight:native-driver:${sqldelight_version}"
+            }
+        }
+
+        iosTest {
+        }
+    }
+}
+
+// This task attaches native framework built from ios module to Xcode project
+// (see iosApp directory). Don't run this task directly,
+// Xcode runs this task itself during its build process.
+// Before opening the project from iosApp directory in Xcode,
+// make sure all Gradle infrastructure exists (gradle.wrapper, gradlew).
+task copyFramework {
+    def buildType = project.findProperty('kotlin.build.type') ?: 'DEBUG'
+    def target = project.findProperty('kotlin.target') ?: 'ios'
+    dependsOn kotlin.targets."$target".binaries.getFramework(buildType).linkTask
+
+    doLast {
+        def srcFile = kotlin.targets."$target".binaries.getFramework(buildType).outputFile
+        def targetDir = getProperty('configuration.build.dir')
+        copy {
+            from srcFile.parent
+            into targetDir
+            include 'app.framework/**'
+            include 'app.framework.dSYM'
+        }
+    }
+}

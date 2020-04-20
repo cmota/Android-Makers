@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="colorPrimary">#48A9EE</color>
+    <color name="colorPrimaryDark">#4396D1</color>
+
+    <color name="colorPrimaryBlack">#070707</color>
+
+    <color name="activity_background">@android:color/white</color>
+</resources>
